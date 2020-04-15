@@ -21,6 +21,7 @@ namespace AzureMediaServices_StreamingEndpoint_AutoScale
 
         static async Task Main(string[] args)
         {
+
             Console.WriteLine("Start Job");
 
             AzureMediaServicesConfig config = new AzureMediaServicesConfig(
@@ -36,19 +37,28 @@ namespace AzureMediaServices_StreamingEndpoint_AutoScale
                 IAzureMediaServicesClient client = await CreateMediaServicesClientAsync(config);
                 Console.WriteLine("connected");
 
-                Console.WriteLine("2. Change StreamingEndpoint ScaleUnit");
+                Console.WriteLine("2. Get StreamingEndpoint State");
                 var streamingEndpoint = client.StreamingEndpoints.Get(config.ResourceGroup,
                     config.AccountName,
                     _defaultStreamingEndpointName);
 
-                Console.WriteLine($"  StreamingEndpoint-Before #{streamingEndpoint.ScaleUnits}");
-                var NewScaleUnitNumber = streamingEndpoint.ScaleUnits + _defaultChangeValue;
-                await client.StreamingEndpoints.ScaleAsync(
-                    config.ResourceGroup, 
-                    config.AccountName, 
-                    _defaultStreamingEndpointName,
-                    NewScaleUnitNumber);
-                Console.WriteLine($"  StreamingEndpoint-After  #{NewScaleUnitNumber}");
+                if (streamingEndpoint.ResourceState == StreamingEndpointResourceState.Stopped
+                    || streamingEndpoint.ResourceState == StreamingEndpointResourceState.Running)
+                {
+                    Console.WriteLine("3. Update StreamingEndpoint ScaleUnit");
+                    Console.WriteLine($"  StreamingEndpoint-Before #{streamingEndpoint.ScaleUnits}");
+                    var NewScaleUnitNumber = streamingEndpoint.ScaleUnits + _defaultChangeValue;
+                    await client.StreamingEndpoints.BeginScaleAsync(
+                        config.ResourceGroup,
+                        config.AccountName,
+                        _defaultStreamingEndpointName,
+                        NewScaleUnitNumber);
+                    Console.WriteLine($"  StreamingEndpoint-After  #{NewScaleUnitNumber}");
+
+                }else
+                {
+                    Console.WriteLine("3. Skip update ScaleUnit because other operation process is working. Please retry this later.");
+                }
 
                 client.Dispose();
                 Console.WriteLine("Completed!");
